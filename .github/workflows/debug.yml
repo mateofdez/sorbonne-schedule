@@ -1,12 +1,24 @@
-import os
-import requests
+name: Debug Master
 
-os.makedirs("debug", exist_ok=True)
+on:
+  workflow_dispatch: {}
 
-for grupo in ["M1.INFO.STL", "M1.MATH"]:
-    for sem in [4, 5]:
-        url = f"https://planning.upmc.fr/oldEmpSelect/jussieu/{grupo}/{sem}/"
-        r = requests.get(url, timeout=30)
-        print(url, r.status_code, len(r.content))
-        with open(f"debug/{grupo}_{sem}.html", "wb") as f:
-            f.write(r.content)
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python debug_master.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add debug/
+          git commit -m "Debug HTML Master" || echo "Sin cambios"
+          git push
