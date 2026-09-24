@@ -1,1 +1,46 @@
+name: Horario semanal
 
+on:
+  schedule:
+    - cron: "0 5 * * *"    # Cada día a las 05:00 UTC -> actualiza el calendario
+    - cron: "0 18 * * 0"   # Domingo a las 18:00 UTC -> calendario + email
+  workflow_dispatch: {}    # Ejecución manual (también manda email)
+
+permissions:
+  contents: write
+
+jobs:
+  horario:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Generar calendario (y email si toca)
+        run: python horario.py
+        env:
+          EMAIL_ORIGEN: ${{ secrets.EMAIL_ORIGEN }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
+          ENVIAR_EMAIL: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 18 * * 0' }}
+
+      - name: Guardar calendario ICS
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add horario.ics
+          if git diff --cached --quiet; then
+            echo "El calendario no ha cambiado."
+          else
+            git commit -m "Actualizar horario"
+            git push
+          fi
